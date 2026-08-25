@@ -1,2 +1,35 @@
-__pycache__/
+# === Entornos Virtuales (Aplica a todas las subcarpetas) ===
+**/.venv/
+**/env/
+**/venv/
+
+# === Python e Inteligencia Artificial ===
+**/__pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# === Configuración de VS Code ===
+.vscode/
+# Nota: Si compartes la configuración de debug con tu equipo, 
+# puedes descomentar la siguiente línea e ignorar solo los ajustes personales:
+# .vscode/settings.json
+
+# === Windows (Archivos del sistema) ===
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# === Seguridad y Variables de Entorno (Esencial para FastAPI) ===
+**/.env
+**/.env.local
+**/.env.development
+**/.env.production
+**/secrets.json
