@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import Body, FastAPI, Query
 
 app = FastAPI(title='Rimart health')
 
@@ -24,10 +24,6 @@ def get_exercises():
 def get_exercise(query: str | None = Query(default=None, description='Texto para buscar por titulo')):
   if query:
     results = []
-    # for exercise in EXERCISES:
-    #   if query.lower() in exercise['title'].lower():
-    #     results.append(exercise)
-        
     # list comprehension
     results = [ exercise for exercise in EXERCISES if query.lower() in exercise['title'].lower() ]
     return {
@@ -37,4 +33,37 @@ def get_exercise(query: str | None = Query(default=None, description='Texto para
   return {
     'data': EXERCISES,
     'query': query
+  }
+
+@app.get('/exercise/{exercise_id}')
+def get_exercise_by_id(exercise_id: int, include_category: bool = Query(default=True, description='Incluir o no el contenido')):
+  for exercise in EXERCISES:
+    if exercise['id'] == exercise_id:
+      id = exercise['id']
+      title = exercise['title']
+      if include_category:
+        return { 'data': exercise }
+      return { 'data': { 'id': id, 'tittle': title } }
+  return {
+    'error': 'Post no encontrado'
+  }
+  
+@app.post('/exercises')
+def create_exercise(exercise: dict = Body(...)):
+  # Ellipsis field (...) in Body() has no default value and is strictly required
+  # None field in Body() is optional required
+  if 'title' not in exercise or 'category' not in exercise:
+    return { 'error': '"title" y "category" son requeridos' }
+  if not str(exercise['title']).strip():
+    return { 'error': 'title no puede estar vacio' }
+  if not str(exercise['category']).strip():
+    return { 'error': 'category no puede estar vacio' }
+  
+  new_id = (EXERCISES[-1]['id'] + 1) if EXERCISES else 1
+  new_exercise = { 'id': new_id, 'title': exercise['title'], 'category': exercise['category'] }
+  EXERCISES.append(new_exercise)
+
+  return {
+    'message': 'Ejercicio creado',
+    'data': new_exercise
   }
