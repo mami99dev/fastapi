@@ -15,12 +15,6 @@ def home():
   }
 
 @app.get('/exercises')
-def get_exercises():
-  return {
-    'data': EXERCISES
-  }
-  
-@app.get('/exercise')
 def get_exercise(query: str | None = Query(default=None, description='Texto para buscar por titulo')):
   if query:
     results = []
@@ -35,8 +29,8 @@ def get_exercise(query: str | None = Query(default=None, description='Texto para
     'query': query
   }
 
-@app.get('/exercise/{exercise_id}')
-def get_exercise_by_id(exercise_id: int, include_category: bool = Query(default=True, description='Incluir o no el contenido')):
+@app.get('/exercises/{exercise_id}')
+def get_exercise_by_id(exercise_id: int, include_category: bool = Query(default=True, description='Incluir o no la categoria')):
   for exercise in EXERCISES:
     if exercise['id'] == exercise_id:
       id = exercise['id']
@@ -76,4 +70,12 @@ def put_exercise(exercise_id: int, data: dict = Body(...)):
       if 'category' in data: exercise['category'] = data['category']
       return { 'message': 'Ejercicio actualizado correctamente', 'data': exercise }
   
+  raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
+
+@app.delete('/exercises/{exercise_id}', status_code=204)
+def delete_exercise(exercise_id: int):
+  for index, exercise in enumerate(EXERCISES):
+    if exercise['id'] == exercise_id:
+      EXERCISES.pop(index)
+      return
   raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
