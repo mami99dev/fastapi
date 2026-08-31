@@ -1,4 +1,4 @@
-from fastapi import Body, FastAPI, Query
+from fastapi import Body, FastAPI, Query, HTTPException
 
 app = FastAPI(title='Rimart health')
 
@@ -45,7 +45,7 @@ def get_exercise_by_id(exercise_id: int, include_category: bool = Query(default=
         return { 'data': exercise }
       return { 'data': { 'id': id, 'tittle': title } }
   return {
-    'error': 'Post no encontrado'
+    'error': 'Ejercicio no encontrado'
   }
   
 @app.post('/exercises')
@@ -67,3 +67,13 @@ def create_exercise(exercise: dict = Body(...)):
     'message': 'Ejercicio creado',
     'data': new_exercise
   }
+  
+@app.put('/exercises/{exercise_id}')
+def put_exercise(exercise_id: int, data: dict = Body(...)):
+  for exercise in EXERCISES:
+    if exercise_id == exercise['id']:
+      if 'title' in data: exercise['title'] = data['title']
+      if 'category' in data: exercise['category'] = data['category']
+      return { 'message': 'Ejercicio actualizado correctamente', 'data': exercise }
+  
+  raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
