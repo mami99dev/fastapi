@@ -1,5 +1,6 @@
 from fastapi import Body, FastAPI, Query, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI(title='Rimart health')
 
@@ -9,9 +10,16 @@ EXERCISES = [
   { 'id': 3, 'title': 'Copa con mancuerna', 'category': 'triceps' }
 ]
 
-class Exercise(BaseModel):
+class BaseExercise(BaseModel):
   title: str
-  category: str
+  category: Optional[str] = "Sin categoria" # Si se pone None el valor por defecto quedaria como null
+
+class ExerciseCreate(BaseExercise):
+  pass
+
+class ExerciseUpdate(BaseModel):
+  title: str
+  category: Optional[str] = None # Si se pone None se guardara el valor anterior
 
 @app.get('/')
 def home():
@@ -48,32 +56,23 @@ def get_exercise_by_id(exercise_id: int, include_category: bool = Query(default=
   }
   
 @app.post('/exercises')
-def create_exercise(exercise: Exercise):
-  # Ellipsis field (...) in Body() has no default value and is strictly required
-  # None field in Body() is optional required
-  # if 'title' not in exercise or 'category' not in exercise:
-  #   return { 'error': '"title" y "category" son requeridos' }
-  # if not str(exercise['title']).strip():
-  #   return { 'error': 'title no puede estar vacio' }
-  # if not str(exercise['category']).strip():
-  #   return { 'error': 'category no puede estar vacio' }
-  
-  # new_id = (EXERCISES[-1]['id'] + 1) if EXERCISES else 1
-  # new_exercise = { 'id': new_id, 'title': exercise['title'], 'category': exercise['category'] }
-  # EXERCISES.append(new_exercise)
+def create_exercise(exercise: ExerciseCreate):
+  new_id = (EXERCISES[-1]['id'] + 1) if EXERCISES else 1
+  new_exercise = { 'id': new_id, 'title': exercise.title, 'category': exercise.category }
+  EXERCISES.append(new_exercise)
 
-  # return {
-  #   'message': 'Ejercicio creado',
-  #   'data': new_exercise
-  # }
-  return { "data": exercise }
+  return {
+    'message': 'Ejercicio creado',
+    'data': new_exercise
+  }
   
 @app.put('/exercises/{exercise_id}')
-def put_exercise(exercise_id: int, data: dict = Body(...)):
+def put_exercise(exercise_id: int, data: ExerciseUpdate):
   for exercise in EXERCISES:
     if exercise_id == exercise['id']:
-      if 'title' in data: exercise['title'] = data['title']
-      if 'category' in data: exercise['category'] = data['category']
+      playload = data.model_dump(exclude_unset=True) # {"title": "Remo", "category": None}
+      if 'title' in playload: exercise['title'] = playload['title']
+      if 'category' in playload: exercise['category'] = playload['category']
       return { 'message': 'Ejercicio actualizado correctamente', 'data': exercise }
   
   raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
