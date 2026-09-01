@@ -1,4 +1,5 @@
 from fastapi import Body, FastAPI, Query, HTTPException
+from pydantic import BaseModel
 
 app = FastAPI(title='Rimart health')
 
@@ -7,6 +8,10 @@ EXERCISES = [
   { 'id': 2, 'title': 'Press con barra', 'category': 'pecho' },
   { 'id': 3, 'title': 'Copa con mancuerna', 'category': 'triceps' }
 ]
+
+class Exercise(BaseModel):
+  title: str
+  category: str
 
 @app.get('/')
 def home():
@@ -43,24 +48,25 @@ def get_exercise_by_id(exercise_id: int, include_category: bool = Query(default=
   }
   
 @app.post('/exercises')
-def create_exercise(exercise: dict = Body(...)):
+def create_exercise(exercise: Exercise):
   # Ellipsis field (...) in Body() has no default value and is strictly required
   # None field in Body() is optional required
-  if 'title' not in exercise or 'category' not in exercise:
-    return { 'error': '"title" y "category" son requeridos' }
-  if not str(exercise['title']).strip():
-    return { 'error': 'title no puede estar vacio' }
-  if not str(exercise['category']).strip():
-    return { 'error': 'category no puede estar vacio' }
+  # if 'title' not in exercise or 'category' not in exercise:
+  #   return { 'error': '"title" y "category" son requeridos' }
+  # if not str(exercise['title']).strip():
+  #   return { 'error': 'title no puede estar vacio' }
+  # if not str(exercise['category']).strip():
+  #   return { 'error': 'category no puede estar vacio' }
   
-  new_id = (EXERCISES[-1]['id'] + 1) if EXERCISES else 1
-  new_exercise = { 'id': new_id, 'title': exercise['title'], 'category': exercise['category'] }
-  EXERCISES.append(new_exercise)
+  # new_id = (EXERCISES[-1]['id'] + 1) if EXERCISES else 1
+  # new_exercise = { 'id': new_id, 'title': exercise['title'], 'category': exercise['category'] }
+  # EXERCISES.append(new_exercise)
 
-  return {
-    'message': 'Ejercicio creado',
-    'data': new_exercise
-  }
+  # return {
+  #   'message': 'Ejercicio creado',
+  #   'data': new_exercise
+  # }
+  return { "data": exercise }
   
 @app.put('/exercises/{exercise_id}')
 def put_exercise(exercise_id: int, data: dict = Body(...)):
