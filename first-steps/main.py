@@ -1,5 +1,5 @@
 from fastapi import Body, FastAPI, Query, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 app = FastAPI(title='Rimart health')
@@ -14,8 +14,23 @@ class BaseExercise(BaseModel):
   title: str
   category: Optional[str] = "Sin categoria" # Si se pone None el valor por defecto quedaria como null
 
-class ExerciseCreate(BaseExercise):
-  pass
+class ExerciseCreate(BaseModel):
+  title: str = Field(
+    ...,
+    min_length=3,
+    max_length=100,
+    description="Titulo del ejercicio (minimo 3 caracteres y maximo 100)",
+    examples=[
+      "Curl con mancuernas",
+      "Sentadilla hack"
+    ]
+  )
+  category: Optional[str] = Field(
+    default="Sin categoria",
+    min_length=3,
+    description="Categoria del ejercicio (minimo 3 caracteres)",
+    examples=["Pecho", "Espalda", "Biceps", "Triceps"]
+  )
 
 class ExerciseUpdate(BaseModel):
   title: str
