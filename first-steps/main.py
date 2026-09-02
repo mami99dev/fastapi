@@ -1,5 +1,5 @@
 from fastapi import Body, FastAPI, Query, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 
 app = FastAPI(title='Rimart health')
@@ -8,6 +8,14 @@ EXERCISES = [
   { 'id': 1, 'title': 'Remo con mancuerna', 'category': 'espalda' },
   { 'id': 2, 'title': 'Press con barra', 'category': 'pecho' },
   { 'id': 3, 'title': 'Copa con mancuerna', 'category': 'triceps' }
+]
+
+FORBIDDEN_WORDS = [
+  'descanso',
+  'cardio',
+  'bicicleta',
+  'eliptica',
+  'escaladora'
 ]
 
 class BaseExercise(BaseModel):
@@ -31,6 +39,15 @@ class ExerciseCreate(BaseModel):
     description="Categoria del ejercicio (minimo 3 caracteres)",
     examples=["Pecho", "Espalda", "Biceps", "Triceps"]
   )
+  
+  #? Se usa para validaciones personalizadas
+  @field_validator('title')
+  @classmethod # Indica que el metodo es de clase
+  def not_allowed_words_in_title(cls, value:str) -> str:
+    for forbidden_word in FORBIDDEN_WORDS:
+      if forbidden_word in value.lower(): raise ValueError(f'El titulo no puede contener la palabra: "{forbidden_word}"')
+    return value
+  
 
 class ExerciseUpdate(BaseModel):
   title: str
@@ -43,7 +60,7 @@ def home():
   }
 
 @app.get('/exercises')
-def get_exercise(query: str | None = Query(default=None, description='Texto para buscar por titulo')):
+def get_exercises(query: str | None = Query(default=None, description='Texto para buscar por titulo')):
   if query:
     results = []
     # list comprehension
