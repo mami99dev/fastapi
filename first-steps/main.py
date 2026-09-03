@@ -1,6 +1,6 @@
-from fastapi import Body, FastAPI, Query, HTTPException
+from fastapi import Body, FastAPI, Query, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from typing import Optional, List, Any, Dict, Union
 
 app = FastAPI(title='Rimart health')
 
@@ -47,11 +47,17 @@ class ExerciseCreate(BaseModel):
     for forbidden_word in FORBIDDEN_WORDS:
       if forbidden_word in value.lower(): raise ValueError(f'El titulo no puede contener la palabra: "{forbidden_word}"')
     return value
-  
 
 class ExerciseUpdate(BaseModel):
   title: str
   category: Optional[str] = None # Si se pone None se guardara el valor anterior
+
+class ExercisePublic(BaseExercise):
+  id: int
+  
+class ExerciseSummary(BaseModel):
+  id: int
+  title: str
 
 @app.get('/')
 def home():
@@ -59,53 +65,41 @@ def home():
     'message': 'Bienvenidos a rimart health por Isaac Martinez'
   }
 
-@app.get('/exercises')
+@app.get('/exercises', response_model=List[ExercisePublic], response_description='Todos los ejercicios')
 def get_exercises(query: str | None = Query(default=None, description='Texto para buscar por titulo')):
   if query:
-    results = []
-    # list comprehension
-    results = [ exercise for exercise in EXERCISES if query.lower() in exercise['title'].lower() ]
-    return {
-      'data': results,
-      'query': query
-    }
-  return {
-    'data': EXERCISES,
-    'query': query
-  }
+    return [ exercise for exercise in EXERCISES if query.lower() in exercise['title'].lower() ]
 
-@app.get('/exercises/{exercise_id}')
+  return EXERCISES
+
+@app.get('/exercises/{exercise_id}', response_model=Union[ExerciseSummary, ExercisePublic], response_description='Ejercicio devuelto') # Si volteas el Union al solicitar un exercise sin category (include_category=False) si devuelve un category el cual es el valor por defecto ("Sin categoria")
 def get_exercise_by_id(exercise_id: int, include_category: bool = Query(default=True, description='Incluir o no la categoria')):
   for exercise in EXERCISES:
     if exercise['id'] == exercise_id:
       id = exercise['id']
       title = exercise['title']
       if include_category:
-        return { 'data': exercise }
-      return { 'data': { 'id': id, 'tittle': title } }
-  return {
-    'error': 'Ejercicio no encontrado'
-  }
+        return exercise
+      print('include_category: False')
+      return { 'id': id, 'title': title }
+  raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
   
 @app.post('/exercises')
-def create_exercise(exercise: ExerciseCreate):
+def create_exercise(exercise: BaseExercise) -> ExercisePublic:
   new_id = (EXERCISES[-1]['id'] + 1) if EXERCISES else 1
   new_exercise = { 'id': new_id, 'title': exercise.title, 'category': exercise.category }
   EXERCISES.append(new_exercise)
 
-  return {
-    'message': 'Ejercicio creado',
-    'data': new_exercise
-  }
+  return new_exercise
   
-@app.put('/exercises/{exercise_id}')
+@app.put('/exercises/{exercise_id}', response_model=ExercisePublic, response_description="Ejercicio actualizado", response_model_exclude_none=True)
 def put_exercise(exercise_id: int, data: ExerciseUpdate):
   for exercise in EXERCISES:
     if exercise_id == exercise['id']:
       playload = data.model_dump(exclude_unset=True) # {"title": "Remo", "category": None}
       if 'title' in playload: exercise['title'] = playload['title']
       if 'category' in playload: exercise['category'] = playload['category']
-      return { 'message': 'Ejercicio actualizado correctamente', 'data': exercise }
+      return exercise
   
   raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
 
