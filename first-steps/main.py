@@ -1,11 +1,11 @@
 from fastapi import Body, FastAPI, Query, HTTPException, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, EmailStr
 from typing import Optional, List, Any, Dict, Union
 
 app = FastAPI(title='Rimart health')
 
 EXERCISES = [
-  { 'id': 1, 'title': 'Remo con mancuerna', 'category': 'espalda' },
+  { 'id': 1, 'title': 'Remo con mancuerna' },
   { 'id': 2, 'title': 'Press con barra', 'category': 'pecho' },
   { 'id': 3, 'title': 'Copa con mancuerna', 'category': 'triceps' }
 ]
@@ -18,9 +18,33 @@ FORBIDDEN_WORDS = [
   'escaladora'
 ]
 
+class Tag(BaseModel):
+  name: str = Field(
+    ...,
+    min_length=3,
+    max_length=30,
+    description="Nombre de la etiqueta"
+  )
+  
+class Author(BaseModel):
+  name: str = Field(
+    ...,
+    min_length=3,
+    max_length=50,
+    description="Nombre del autor"
+  )
+  email: EmailStr = Field(
+    ...,
+    min_length=3,
+    max_length=50,
+    description="Email del autor"
+  )
+
 class BaseExercise(BaseModel):
   title: str
   category: Optional[str] = "Sin categoria" # Si se pone None el valor por defecto quedaria como null
+  tags: Optional[List[Tag]] = []
+  author: Optional[Author] = None
 
 class ExerciseCreate(BaseModel):
   title: str = Field(
@@ -39,6 +63,8 @@ class ExerciseCreate(BaseModel):
     description="Categoria del ejercicio (minimo 3 caracteres)",
     examples=["Pecho", "Espalda", "Biceps", "Triceps"]
   )
+  tags: Optional[List[Tag]] = []
+  author: Optional[Author] = None
   
   #? Se usa para validaciones personalizadas
   @field_validator('title')
@@ -51,6 +77,8 @@ class ExerciseCreate(BaseModel):
 class ExerciseUpdate(BaseModel):
   title: str
   category: Optional[str] = None # Si se pone None se guardara el valor anterior
+  tags: Optional[List[Tag]] = []
+  author: Optional[Author] = None
 
 class ExercisePublic(BaseExercise):
   id: int
@@ -58,6 +86,8 @@ class ExercisePublic(BaseExercise):
 class ExerciseSummary(BaseModel):
   id: int
   title: str
+  tags: Optional[List[Tag]] = []
+  author: Optional[Author] = None
 
 @app.get('/')
 def home():
@@ -76,18 +106,21 @@ def get_exercises(query: str | None = Query(default=None, description='Texto par
 def get_exercise_by_id(exercise_id: int, include_category: bool = Query(default=True, description='Incluir o no la categoria')):
   for exercise in EXERCISES:
     if exercise['id'] == exercise_id:
-      id = exercise['id']
-      title = exercise['title']
       if include_category:
         return exercise
-      print('include_category: False')
-      return { 'id': id, 'title': title }
+      return { 'id': exercise['id'], 'title': exercise['title'], 'tags': exercise['tags'], 'author': exercise['author'] }
   raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
   
-@app.post('/exercises')
-def create_exercise(exercise: BaseExercise) -> ExercisePublic:
+@app.post('/exercises', response_model=ExercisePublic, response_description="Ejercicio creado")
+def create_exercise(exercise: ExerciseCreate):
   new_id = (EXERCISES[-1]['id'] + 1) if EXERCISES else 1
-  new_exercise = { 'id': new_id, 'title': exercise.title, 'category': exercise.category }
+  new_exercise = { 
+    'id': new_id,
+    'title': exercise.title,
+    'category': exercise.category,
+    'tags': [tag.model_dump() for tag in exercise.tags ],
+    'author': exercise.author.model_dump() if exercise.author else None
+  }
   EXERCISES.append(new_exercise)
 
   return new_exercise
@@ -99,6 +132,8 @@ def put_exercise(exercise_id: int, data: ExerciseUpdate):
       playload = data.model_dump(exclude_unset=True) # {"title": "Remo", "category": None}
       if 'title' in playload: exercise['title'] = playload['title']
       if 'category' in playload: exercise['category'] = playload['category']
+      if 'tags' in playload: exercise['tags'] = playload['tags']
+      if 'author' in playload: exercise['author'] = playload['author']
       return exercise
   
   raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
