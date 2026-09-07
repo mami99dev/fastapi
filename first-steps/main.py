@@ -1,4 +1,4 @@
-from fastapi import Body, FastAPI, Query, HTTPException, Response
+from fastapi import Body, FastAPI, Path, Query, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator, EmailStr
 from typing import Optional, List, Any, Dict, Union
 
@@ -43,7 +43,7 @@ class Author(BaseModel):
 class BaseExercise(BaseModel):
   title: str
   category: Optional[str] = "Sin categoria" # Si se pone None el valor por defecto quedaria como null
-  tags: Optional[List[Tag]] = []
+  tags: Optional[List[Tag]] = Field(default_factory=list)
   author: Optional[Author] = None
 
 class ExerciseCreate(BaseModel):
@@ -63,7 +63,7 @@ class ExerciseCreate(BaseModel):
     description="Categoria del ejercicio (minimo 3 caracteres)",
     examples=["Pecho", "Espalda", "Biceps", "Triceps"]
   )
-  tags: Optional[List[Tag]] = []
+  tags: Optional[List[Tag]] = Field(default_factory=list)
   author: Optional[Author] = None
   
   #? Se usa para validaciones personalizadas
@@ -75,9 +75,9 @@ class ExerciseCreate(BaseModel):
     return value
 
 class ExerciseUpdate(BaseModel):
-  title: str
+  title: Optional[str] = Field(None, min_length=3, max_length=100)
   category: Optional[str] = None # Si se pone None se guardara el valor anterior
-  tags: Optional[List[Tag]] = []
+  tags: Optional[List[Tag]] = Field(default_factory=list)
   author: Optional[Author] = None
 
 class ExercisePublic(BaseExercise):
@@ -86,7 +86,7 @@ class ExercisePublic(BaseExercise):
 class ExerciseSummary(BaseModel):
   id: int
   title: str
-  tags: Optional[List[Tag]] = []
+  tags: Optional[List[Tag]] = Field(default_factory=list)
   author: Optional[Author] = None
 
 @app.get('/')
@@ -103,7 +103,13 @@ def get_exercises(query: str | None = Query(default=None, description='Texto par
   return EXERCISES
 
 @app.get('/exercises/{exercise_id}', response_model=Union[ExerciseSummary, ExercisePublic], response_description='Ejercicio devuelto') # Si volteas el Union al solicitar un exercise sin category (include_category=False) si devuelve un category el cual es el valor por defecto ("Sin categoria")
-def get_exercise_by_id(exercise_id: int, include_category: bool = Query(default=True, description='Incluir o no la categoria')):
+def get_exercise_by_id(exercise_id: int = Path(
+    ...,
+    ge=1,
+    title='ID del ejercicio',
+    description='Identificador entero del ejercicio, debe ser mayor a 1',
+    example=1
+  ), include_category: bool = Query(default=True, description='Incluir o no la categoria')):
   for exercise in EXERCISES:
     if exercise['id'] == exercise_id:
       if include_category:
