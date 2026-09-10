@@ -96,7 +96,13 @@ def home():
   }
 
 @app.get('/exercises', response_model=List[ExercisePublic], response_description='Todos los ejercicios')
-def get_exercises(query: str | None = Query(default=None, description='Texto para buscar por titulo')):
+def get_exercises(query: Optional[str] = Query(
+  default=None,
+  description='Texto para buscar por titulo',
+  alias='search',
+  min_length=3,
+  max_length=50
+)):
   if query:
     return [ exercise for exercise in EXERCISES if query.lower() in exercise['title'].lower() ]
 
