@@ -1,13 +1,13 @@
 from fastapi import Body, FastAPI, Path, Query, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator, EmailStr
-from typing import Optional, List, Any, Dict, Union
+from typing import Literal, Optional, List, Any, Dict, Union
 
 app = FastAPI(title='Rimart health')
 
 EXERCISES = [
-  { 'id': 1, 'title': 'Remo con mancuerna' },
-  { 'id': 2, 'title': 'Press con barra', 'category': 'pecho' },
-  { 'id': 3, 'title': 'Copa con mancuerna', 'category': 'triceps' }
+  {'id': 1, 'title': 'Remo con mancuerna'},
+  {'id': 2, 'title': 'Press con barra', 'category': 'pecho'},
+  {'id': 3, 'title': 'Copa con mancuerna', 'category': 'triceps'}
 ]
 
 FORBIDDEN_WORDS = [
@@ -96,26 +96,58 @@ def home():
   }
 
 @app.get('/exercises', response_model=List[ExercisePublic], response_description='Todos los ejercicios')
-def get_exercises(query: Optional[str] = Query(
-  default=None,
-  description='Texto para buscar por titulo',
-  alias='search',
-  min_length=3,
-  max_length=50
-)):
+def get_exercises(
+  query: Optional[str] = Query(
+    default=None,
+    description='Texto para buscar por titulo',
+    alias='search',
+    min_length=3,
+    max_length=50,
+    pattern=r"^[\w\sáéíóúÁÉÍÓÚüÜ-]+$"
+  ),
+  limit: int = Query(
+    10,
+    ge=1,
+    le=50,
+    description="Número de resultados (1-50)"
+  ),
+  offset: int = Query(
+    0,
+    ge=0,
+    description="Elementos a saltar antes de empezar la lista"
+  ),
+  order_by: Literal["id", "title"] = Query(
+    "id",
+    description="Campo de orden"
+  ),
+  direction: Literal["asc", "desc"] = Query(
+    "asc",
+    description="Dirección de orden"
+  )
+):
+  results = EXERCISES
   if query:
-    return [ exercise for exercise in EXERCISES if query.lower() in exercise['title'].lower() ]
+    results = [exercise for exercise in results if query.lower in exercise["title"].lower()]
 
-  return EXERCISES
+  results = sorted(results, key=lambda exercise: exercise[order_by], reverse=(direction == "desc"))
+  print(results[offset: offset + limit])
+  return results[offset: offset + limit]
 
-@app.get('/exercises/{exercise_id}', response_model=Union[ExerciseSummary, ExercisePublic], response_description='Ejercicio devuelto') # Si volteas el Union al solicitar un exercise sin category (include_category=False) si devuelve un category el cual es el valor por defecto ("Sin categoria")
-def get_exercise_by_id(exercise_id: int = Path(
+# Si volteas el Union al solicitar un exercise sin category (include_category=False) si devuelve un category el cual es el valor por defecto ("Sin categoria")
+@app.get('/exercises/{exercise_id}', response_model=Union[ExerciseSummary, ExercisePublic], response_description='Ejercicio devuelto')
+def get_exercise_by_id(
+  exercise_id: int = Path(
     ...,
     ge=1,
     title='ID del ejercicio',
     description='Identificador entero del ejercicio, debe ser mayor a 1',
     example=1
-  ), include_category: bool = Query(default=True, description='Incluir o no la categoria')):
+  ), 
+  include_category: bool = Query(
+    default=True,
+    description='Incluir o no la categoria'
+  )
+):
   for exercise in EXERCISES:
     if exercise['id'] == exercise_id:
       if include_category:
@@ -126,11 +158,11 @@ def get_exercise_by_id(exercise_id: int = Path(
 @app.post('/exercises', response_model=ExercisePublic, response_description="Ejercicio creado")
 def create_exercise(exercise: ExerciseCreate):
   new_id = (EXERCISES[-1]['id'] + 1) if EXERCISES else 1
-  new_exercise = { 
+  new_exercise = {
     'id': new_id,
     'title': exercise.title,
     'category': exercise.category,
-    'tags': [tag.model_dump() for tag in exercise.tags ],
+    'tags': [tag.model_dump() for tag in exercise.tags],
     'author': exercise.author.model_dump() if exercise.author else None
   }
   EXERCISES.append(new_exercise)
