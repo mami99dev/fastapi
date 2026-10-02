@@ -631,6 +631,27 @@ def get_exercises(
 
   return CompletePaginatedExerciseMetada(total=total, total_pages=total_pages, order_by=order_by, direction=direction, search=query, items=results)
 
+@app.get('/exercises/by-tags', response_model=List[ExercisePublic])
+def list_by_tags(
+  tags: List[str] = Query(
+    ...,
+    min_length=2,
+    description="Una o mas etiquetas",
+    examples=[
+      "Pecho",
+      "Espalda",
+      "Triceps",
+      "Biceps"
+    ]
+  )
+):
+  tags_lower = [tag.lower() for tag in tags]
+  
+  return [
+    exercise for exercise in EXERCISES
+    if all(any(tag['name'].lower() == t for tag in exercise.get('tags', [])) for t in tags_lower)
+  ]
+
 # Si volteas el Union al solicitar un exercise sin category (include_category=False) si devuelve un category el cual es el valor por defecto ("Sin categoria")
 @app.get('/exercises/{exercise_id}', response_model=Union[ExerciseSummary, ExercisePublic], response_description='Ejercicio devuelto')
 def get_exercise_by_id(
