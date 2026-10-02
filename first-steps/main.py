@@ -580,7 +580,12 @@ def home():
   }
 
 @app.get('/exercises', response_model=CompletePaginatedExerciseMetada, response_description='Todos los ejercicios')
-def get_exercises(
+def get_exercises(  
+  text: Optional[str] = Query(
+    default=None,
+    deprecated=True,
+    description='Parametro obsoleto, usa "query / search" en su lugar'
+  ),
   query: Optional[str] = Query(
     default=None,
     description='Texto para buscar por titulo',
@@ -615,6 +620,7 @@ def get_exercises(
     description="Ejercicios por pagina"
   )
 ):
+  query = query or text
   total_results = [exercise for exercise in EXERCISES if query.lower() in exercise["title"].lower()]
   total_results = sorted(total_results, key=lambda exercise: exercise[order_by], reverse=(direction == "desc"))
   total_results = total_results[offset: offset + limit]
